@@ -1,9 +1,5 @@
 require 'pry'
 
-@@execute_time = 3
-@@skiped = 0
-@@processed = 0
-
 class OSM 
   attr_reader :storage, :time_processed
   def initialize
@@ -61,23 +57,43 @@ class Storage
   end
 end
 
+
 class Request 
   def initialize(time)
     @process = time
   end
 end
-osm = OSM.new
-time = Time.now 
-i = 0
-a = Thread.new { osm.process(time) }
-b = Thread.new { 
-  while (Time.now <= time + @@execute_time) do 
-    osm.add_to_storage(i)
-    i+=1
-  end
-}
 
-[a,b].map(&:join)
-puts "requests = #{i}"
+class Program 
+  def initilize 
+    # @count_requests = 0
+  end
+
+  def call
+    osm = OSM.new
+    time = Time.now 
+    i = 0
+    a = Thread.new { osm.process(time) }
+    b = Thread.new { 
+      while (Time.now <= time + @@execute_time) do 
+        osm.add_to_storage(@@count_requests)
+        # binding.pry
+        @@count_requests +=1 
+      end
+    }
+
+    [a,b].map(&:join)
+  end
+end
+
+@@execute_time = 3
+@@skiped = 0
+@@processed = 0
+@@count_requests = 0
+
+program = Program.new
+program.call
+
+puts "requests = #{@@count_requests}"
 puts "Processed = #{@@processed}"
 puts "Skipped = #{@@skiped}"
