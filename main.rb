@@ -18,14 +18,11 @@ class OSM
   end
 
   def process(time)
-    while (Time.now <= time + @@execute_time) do 
-      next_request = @storage.next_request
-      if next_request
-        @@processed += 1 
+    while (Time.now <= time + Count.execute_time) do 
+      if next_request = @storage.next_request
+        Count.increment_processed 
         puts "sleep #{next_request}"
         sleep time_processed
-      else 
-        puts "NO REQUEST"
       end
     end
   end
@@ -40,11 +37,7 @@ class Storage
   end
 
   def add(request)
-    if current_storage.count == storage_limit
-      @@skiped += 1 
-      return false 
-    end
-    @current_storage << request
+   current_storage.count == storage_limit ? Count.increment_skiped : @current_storage << request
   end
 
   def remove(request)
@@ -57,43 +50,62 @@ class Storage
   end
 end
 
-
-class Request 
-  def initialize(time)
-    @process = time
-  end
-end
-
 class Program 
-  def initilize 
-    # @count_requests = 0
-  end
-
-  def call
+  def self.call
     osm = OSM.new
     time = Time.now 
     i = 0
-    a = Thread.new { osm.process(time) }
-    b = Thread.new { 
-      while (Time.now <= time + @@execute_time) do 
-        osm.add_to_storage(@@count_requests)
-        # binding.pry
-        @@count_requests +=1 
+    process_thread = Thread.new { osm.process(time) }
+    requests_flow_thread = Thread.new { 
+      while (Time.now <= time + Count.execute_time) do 
+        osm.add_to_storage(Count.count_requests)
+        Count.increment_count_requests
       end
     }
 
-    [a,b].map(&:join)
+    [process_thread, requests_flow_thread].map(&:join)
   end
 end
 
-@@execute_time = 3
-@@skiped = 0
-@@processed = 0
-@@count_requests = 0
+class Count
+  @@skiped = 0
+  @@processed = 0
+  @@count_requests = 0
+  @@execute_time = 3
 
-program = Program.new
-program.call
+  def self.execute_time 
+    @@execute_time
+  end
 
-puts "requests = #{@@count_requests}"
-puts "Processed = #{@@processed}"
-puts "Skipped = #{@@skiped}"
+  def self.increment_skiped 
+    @@skiped += 1
+  end
+  def self.increment_processed
+    @@processed +=1
+  end
+  def self.increment_count_requests
+    @@count_requests +=1
+  end
+
+  def self.count_requests
+    @@count_requests
+  end
+
+  def self.skiped 
+    @@skiped
+  end
+
+  def self.processed
+    @@processed
+  end
+end
+
+
+
+
+program = Program.call
+
+puts "requests = #{Count.count_requests}"
+puts "Processed = #{Count.processed}"
+puts "Skipped = #{Count.skiped}"
+puts "Missed = #{Count.count_requests - Count.processed - Count.skiped}"
